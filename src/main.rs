@@ -46,6 +46,76 @@ enum Opcode {
         mb: u8,
         me: u8,
     },
+
+    // ---- pseudomnemonics ----
+
+    Extlwi {
+        ra: Register,
+        rs: Register,
+        n: u8,
+        b: u8,
+    },
+
+    Extrwi {
+        ra: Register,
+        rs: Register,
+        n: u8,
+        b: u8,
+    },
+
+    Rotlwi {
+        ra: Register,
+        rs: Register,
+        n: u8,
+    },
+
+    Rotrwi {
+        ra: Register,
+        rs: Register,
+        n: u8,
+    },
+
+    Slwi {
+        ra: Register,
+        rs: Register,
+        n: u8,
+    },
+
+    Srwi {
+        ra: Register,
+        rs: Register,
+        n: u8,
+    },
+
+    Clrlwi {
+        ra: Register,
+        rs: Register,
+        n: u8,
+    },
+
+    Clrrwi {
+        ra: Register,
+        rs: Register,
+        n: u8,
+    },
+
+    Clrlslwi {
+        ra: Register,
+        rs: Register,
+        b: u8,
+        n: u8,
+    }
+}
+
+impl Opcode {
+    fn highlevel(&self) -> String {
+        match self {
+            Self::Rlwinm { ra, rs, sh, mb, me } => {
+                format!("{dest} = ({src} << {sh}) & MASK({mb}..{me})", dest=ra, src=rs, sh=sh, mb=mb, me=me)
+            },
+            _ => unimplemented!(),
+        }
+    }
 }
 
 fn parse_register(inp: &str) -> IResult<&str, Register> {
@@ -78,10 +148,10 @@ fn parse_rlwinm(inp: &str) -> IResult<&str, Opcode> {
         map(
             tuple((
                 preceded(whitespace, parse_register),
-                preceded(comma_sep, parse_register),
-                preceded(comma_sep, parse_immediate),
-                preceded(comma_sep, parse_immediate),
-                preceded(comma_sep, parse_immediate),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+                preceded(comma_sep,  parse_immediate),
+                preceded(comma_sep,  parse_immediate),
             )),
             |(ra, rs, sh, mb, me)| Opcode::Rlwinm { ra, rs, sh, mb, me },
         ),
@@ -94,10 +164,10 @@ fn parse_rlwimi(inp: &str) -> IResult<&str, Opcode> {
         map(
             tuple((
                 preceded(whitespace, parse_register),
-                preceded(comma_sep, parse_register),
-                preceded(comma_sep, parse_immediate),
-                preceded(comma_sep, parse_immediate),
-                preceded(comma_sep, parse_immediate),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+                preceded(comma_sep,  parse_immediate),
+                preceded(comma_sep,  parse_immediate),
             )),
             |(ra, rs, sh, mb, me)| Opcode::Rlwimi { ra, rs, sh, mb, me },
         ),
@@ -106,25 +176,168 @@ fn parse_rlwimi(inp: &str) -> IResult<&str, Opcode> {
 
 fn parse_rlwnm(inp: &str) -> IResult<&str, Opcode> {
     preceded(
-        tag("rlwimi"),
+        tag("rlwnm"),
         map(
             tuple((
                 preceded(whitespace, parse_register),
-                preceded(comma_sep, parse_register),
-                preceded(comma_sep, parse_register),
-                preceded(comma_sep, parse_immediate),
-                preceded(comma_sep, parse_immediate),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+                preceded(comma_sep,  parse_immediate),
             )),
             |(ra, rs, rb, mb, me)| Opcode::Rlwnm { ra, rs, rb, mb, me },
         ),
     )(inp)
 }
 
-fn parse_opcode(inp: &str) -> IResult<&str, Opcode> {
-    alt((parse_rlwinm, parse_rlwimi, parse_rlwnm))(inp)
+fn parse_extlwi(inp: &str) -> IResult<&str, Opcode> {
+    preceded(
+        tag("extlwi"),
+        map(
+            tuple((
+                preceded(whitespace, parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+                preceded(comma_sep,  parse_immediate),
+            )),
+            |(ra, rs, n, b)| Opcode::Extlwi { ra, rs, n, b },
+        ),
+    )(inp)
 }
 
-fn main() {}
+fn parse_extrwi(inp: &str) -> IResult<&str, Opcode> {
+    preceded(
+        tag("extrwi"),
+        map(
+            tuple((
+                preceded(whitespace, parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+                preceded(comma_sep,  parse_immediate),
+            )),
+            |(ra, rs, n, b)| Opcode::Extrwi { ra, rs, n, b },
+        ),
+    )(inp)
+}
+
+fn parse_rotlwi(inp: &str) -> IResult<&str, Opcode> {
+    preceded(
+        tag("rotlwi"),
+        map(
+            tuple((
+                preceded(whitespace, parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+            )),
+            |(ra, rs, n)| Opcode::Rotlwi { ra, rs, n },
+        ),
+    )(inp)
+}
+
+fn parse_rotrwi(inp: &str) -> IResult<&str, Opcode> {
+    preceded(
+        tag("rotrwi"),
+        map(
+            tuple((
+                preceded(whitespace, parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+            )),
+            |(ra, rs, n)| Opcode::Rotrwi { ra, rs, n },
+        ),
+    )(inp)
+}
+
+fn parse_slwi(inp: &str) -> IResult<&str, Opcode> {
+    preceded(
+        tag("slwi"),
+        map(
+            tuple((
+                preceded(whitespace, parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+            )),
+            |(ra, rs, n)| Opcode::Slwi { ra, rs, n },
+        ),
+    )(inp)
+}
+
+fn parse_srwi(inp: &str) -> IResult<&str, Opcode> {
+    preceded(
+        tag("srwi"),
+        map(
+            tuple((
+                preceded(whitespace, parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+            )),
+            |(ra, rs, n)| Opcode::Srwi { ra, rs, n },
+        ),
+    )(inp)
+}
+
+fn parse_clrlwi(inp: &str) -> IResult<&str, Opcode> {
+    preceded(
+        tag("clrlwi"),
+        map(
+            tuple((
+                preceded(whitespace, parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+            )),
+            |(ra, rs, n)| Opcode::Clrlwi { ra, rs, n },
+        ),
+    )(inp)
+}
+
+fn parse_clrrwi(inp: &str) -> IResult<&str, Opcode> {
+    preceded(
+        tag("clrrwi"),
+        map(
+            tuple((
+                preceded(whitespace, parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+            )),
+            |(ra, rs, n)| Opcode::Clrrwi { ra, rs, n },
+        ),
+    )(inp)
+}
+
+fn parse_clrlslwi(inp: &str) -> IResult<&str, Opcode> {
+    preceded(
+        tag("clrlslwi"),
+        map(
+            tuple((
+                preceded(whitespace, parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+                preceded(comma_sep,  parse_immediate),
+            )),
+            |(ra, rs, b, n)| Opcode::Clrlslwi { ra, rs, b, n },
+        ),
+    )(inp)
+}
+
+fn parse_opcode(inp: &str) -> IResult<&str, Opcode> {
+    alt((
+        parse_rlwinm,
+        parse_rlwimi,
+        parse_rlwnm,
+        parse_extlwi, parse_extrwi,
+        parse_rotlwi, parse_rotrwi,
+        parse_slwi, parse_srwi,
+        parse_clrlwi, parse_clrrwi,
+        parse_clrlslwi,
+    ))(inp)
+}
+
+fn main() {
+    let asm = "rlwinm r0,r7,0x10,0x0,0xf";
+    let (_, op) = parse_opcode(asm).unwrap();
+    println!("{}", asm);
+    println!("{}", op.highlevel());
+}
 
 #[cfg(test)]
 mod tests {
