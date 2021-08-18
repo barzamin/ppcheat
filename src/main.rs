@@ -104,16 +104,63 @@ enum Opcode {
         rs: Register,
         b: u8,
         n: u8,
-    }
+    },
+
+    Rotlw {
+        ra: Register,
+        rs: Register,
+        rb: Register,
+    },
+
+    Inslwi {
+        ra: Register,
+        rs: Register,
+        n: u8,
+        b: u8,
+    },
+
+    Insrwi {
+        ra: Register,
+        rs: Register,
+        n: u8,
+        b: u8,
+    },
 }
 
 impl Opcode {
-    fn highlevel(&self) -> String {
+    pub fn highlevel(&self) -> String {
         match self {
             Self::Rlwinm { ra, rs, sh, mb, me } => {
                 format!("{dest} = ({src} << {sh}) & MASK({mb}..{me})", dest=ra, src=rs, sh=sh, mb=mb, me=me)
             },
             _ => unimplemented!(),
+        }
+    }
+
+    pub fn canonicalize(&self) -> Self {
+        match self {
+            &Self::Rlwinm { .. } => self.clone(),
+            &Self::Rlwimi { .. } => self.clone(),
+            &Self::Rlwnm  { .. } => self.clone(),
+
+            &Self::Inslwi { ra, rs, n, b } => Self::Rlwinm { ra, rs, sh: 32-b, mb: b, me: b+n-1 },
+            &Self::Insrwi { ra, rs, n, b } => Self::Rlwinm { ra, rs, sh: 32-(b+n), mb: b, me: (b+n)-1 },
+
+            &Self::Extlwi { ra, rs, n, b } => Self::Rlwinm { ra, rs, sh: b, mb: 0, me: n-1 },
+            &Self::Extrwi { ra, rs, n, b } => Self::Rlwinm { ra, rs, sh: b + n, mb: 32-n, me: 31 },
+
+            &Self::Rotlwi { ra, rs, n } => Self::Rlwinm { ra, rs, sh: n, mb: 0, me: 31 },
+            &Self::Rotrwi { ra, rs, n } => Self::Rlwinm { ra, rs, sh: 32-n, mb: 0, me: 31 },
+
+            &Self::Slwi { ra, rs, n } => Self::Rlwinm { ra, rs, sh: n, mb: 0, me: 31-n },
+            &Self::Srwi { ra, rs, n } => Self::Rlwinm { ra, rs, sh: 32-n, mb: n, me: 31 },
+
+            &Self::Clrlwi { ra, rs, n } => Self::Rlwinm { ra, rs, sh: 0, mb: n, me: 31 },
+            &Self::Clrrwi { ra, rs, n } => Self::Rlwinm { ra, rs, sh: 0, mb: 0, me: 31-n },
+
+            &Self::Clrlslwi { ra, rs, b, n } => Self::Rlwinm { ra, rs, sh: n, mb: b-n, me: 31-n},
+
+            &Self::Rotlw { ra, rs, rb } => Self::Rlwnm { ra, rs, rb, mb: 0, me: 31 },
         }
     }
 }
@@ -319,6 +366,50 @@ fn parse_clrlslwi(inp: &str) -> IResult<&str, Opcode> {
     )(inp)
 }
 
+fn parse_rotlw(inp: &str) -> IResult<&str, Opcode> {
+    preceded(
+        tag("rotlw"),
+        map(
+            tuple((
+                preceded(whitespace, parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_register),
+            )),
+            |(ra, rs, rb)| Opcode::Rotlw { ra, rs, rb, },
+        ),
+    )(inp)
+}
+
+fn parse_inslwi(inp: &str) -> IResult<&str, Opcode> {
+    preceded(
+        tag("inslwi"),
+        map(
+            tuple((
+                preceded(whitespace, parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+                preceded(comma_sep,  parse_immediate),
+            )),
+            |(ra, rs, n, b)| Opcode::Inslwi { ra, rs, n, b },
+        ),
+    )(inp)
+}
+
+fn parse_insrwi(inp: &str) -> IResult<&str, Opcode> {
+    preceded(
+        tag("insrwi"),
+        map(
+            tuple((
+                preceded(whitespace, parse_register),
+                preceded(comma_sep,  parse_register),
+                preceded(comma_sep,  parse_immediate),
+                preceded(comma_sep,  parse_immediate),
+            )),
+            |(ra, rs, n, b)| Opcode::Insrwi { ra, rs, n, b },
+        ),
+    )(inp)
+}
+
 fn parse_opcode(inp: &str) -> IResult<&str, Opcode> {
     alt((
         parse_rlwinm,
@@ -329,6 +420,7 @@ fn parse_opcode(inp: &str) -> IResult<&str, Opcode> {
         parse_slwi, parse_srwi,
         parse_clrlwi, parse_clrrwi,
         parse_clrlslwi,
+        parse_rotlw,
     ))(inp)
 }
 
